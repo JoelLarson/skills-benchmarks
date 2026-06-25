@@ -12,12 +12,30 @@ fi
 
 SKILLS_DIR="skills"
 
+# strip YAML frontmatter (first ---...--- block); print the body
+strip_frontmatter() { awk 'BEGIN{f=0} /^---[[:space:]]*$/{f++; next} f>=2{print}' "$1"; }
+
+SKILL_BODY=""
+if [[ "${FORCE_INJECT:-0}" == "1" ]]; then
+  SMD="$(find "$SKILLS_DIR" -name SKILL.md | head -1)"
+  SKILL_BODY="$(strip_frontmatter "$SMD")"
+  [[ -n "$SKILL_BODY" ]] || SKILL_BODY="$(cat "$SMD")"
+  echo "Force-inject ON: appending the skill directive to every with_skill prompt."
+fi
+
 run_one() {
   local model="$1" task="$2" cond="$3" trial="$4"
 
-  local extra=()
+  local extra=() prompt_args=()
   if [[ "$cond" == "with_skill" ]]; then
-    extra=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
+    if [[ "${FORCE_INJECT:-0}" == "1" ]]; then
+      # Only difference from baseline is the appended directive (native skill
+      # injection won't activate a trigger-less skill on Codex).
+      extra=(--skill-mode no-skill)
+      prompt_args=(--prompt "$(strip_frontmatter "tasks/$task/task.md")"$'\n\n'"$SKILL_BODY")
+    else
+      extra=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
+    fi
   else
     extra=(--skill-mode no-skill)
   fi
@@ -33,7 +51,7 @@ run_one() {
 
   echo ">> $AGENT | $model | $task | $cond | trial $trial"
   bench eval run --tasks-dir "tasks/$task" --agent "$AGENT" \
-    "${model_args[@]}" --sandbox docker "${extra[@]}" --jobs-dir "$jobsdir"
+    "${model_args[@]}" --sandbox docker "${extra[@]}" "${prompt_args[@]}" --jobs-dir "$jobsdir"
 
   local src dest timing
   src="$(find "$jobsdir" -name reward.txt | head -1)"

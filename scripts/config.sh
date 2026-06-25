@@ -23,6 +23,10 @@ fi
 # for agents like `oracle` that don't need one.)
 if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
 
+# Force-inject the skill body into each with_skill prompt — for global-directive
+# skills (e.g. make-no-mistakes) that Codex won't auto-activate. Set FORCE_INJECT=1.
+: "${FORCE_INJECT:=0}"
+
 # Reasoning/thinking effort, passed as --reasoning-effort to agents that expose it.
 # IMPORTANT: codex-acp does NOT accept this flag (it errors). Leave empty for codex
 # — bench already maps a bare codex model to its 'medium'-effort session id by

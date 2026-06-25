@@ -52,6 +52,15 @@ bash scripts/eval_skill.sh skills/make-no-mistakes \
 ```
 
 ## Run the fixed three-task pilot
+The three local tasks are the cheapest, most controlled testbed (tiny image, one
+short Codex call each) and `arithmetic-trap` already fails at baseline — ideal for
+proving a precision skill without burning quota. Force-inject works here too:
+```bash
+FORCE_INJECT=1 bash scripts/run_pilot.sh        # appends the skill directive to with_skill prompts
+# focus the cheapest high-signal task:
+FORCE_INJECT=1 TASKS=arithmetic-trap TRIALS=3 bash scripts/run_pilot.sh
+```
+
 ```bash
 bash scripts/run_pilot.sh          # local, uses Docker + API key
 uv run python scripts/aggregate.py # -> results/summary.json
