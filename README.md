@@ -25,7 +25,27 @@ uv tool install "benchflow>=0.6.2,<0.7"
 uv sync
 ```
 
-## Run the pilot
+## Evaluate any skill end-to-end
+One command fetches a skill, has Codex propose fitting benchmarks (you confirm),
+prints a cost/time estimate, runs no-skill vs with-skill on small slices, and
+writes a consolidated report:
+```bash
+bash scripts/eval_skill.sh <skill-source>           # git repo / gist URL / local dir / .skill
+# options: --benchmarks a,b  --tasks-per-bench N  --trials T  --model M  --yes
+```
+- Codex (your `codex login`) picks benchmarks from the harbor registry based on the
+  skill's `SKILL.md`; you approve/edit before anything runs.
+- Skip selection with `--benchmarks humanevalfix,quixbugs`; skip all prompts with `--yes`.
+- Report lands at `results/<skill>/site/index.html` (per-benchmark pass-rate, Skill
+  Lift, regressions, plus Codex's selection rationale).
+
+Example (tiny smoke, no prompts):
+```bash
+bash scripts/eval_skill.sh skills/make-no-mistakes \
+  --benchmarks humanevalfix --tasks-per-bench 2 --trials 1 --yes
+```
+
+## Run the fixed three-task pilot
 ```bash
 bash scripts/run_pilot.sh          # local, uses Docker + API key
 uv run python scripts/aggregate.py # -> results/summary.json

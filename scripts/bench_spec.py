@@ -26,7 +26,8 @@ repo = t0.get("git_url", "").replace("https://github.com/", "").removesuffix(".g
 ref = t0.get("git_commit_id", "")
 srcpath = os.path.dirname(t0.get("path", ""))
 names = [t.get("name") for t in tasks[:n] if t.get("name")]
-print(f"REPO={repo}")
-print(f"REF={ref}")
-print(f"SRCPATH={srcpath}")
-print(f"TASKS={' '.join(names)}")
+# Quote values so `eval "$spec"` assigns each whole value (TASKS has spaces).
+print(f'REPO="{repo}"')
+print(f'REF="{ref}"')
+print(f'SRCPATH="{srcpath}"')
+print(f'TASKS="{" ".join(names)}"')
