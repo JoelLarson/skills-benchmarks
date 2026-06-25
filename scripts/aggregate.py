@@ -13,12 +13,14 @@ def read_reward(trial_dir: Path) -> int:
 
 
 def tally(cond_dir: Path) -> dict:
+    # Count every reward.txt under the condition dir, at any depth. This supports
+    # both the simple layout (cond/trial-N/reward.txt — one reward per trial) and
+    # the benchmark layout (cond/trial-N/<subtask>/reward.txt — many per trial).
     passes = trials = 0
     if cond_dir.is_dir():
-        for trial_dir in sorted(cond_dir.glob("trial-*")):
-            if (trial_dir / "reward.txt").exists():
-                trials += 1
-                passes += read_reward(trial_dir)
+        for reward_file in sorted(cond_dir.rglob("reward.txt")):
+            trials += 1
+            passes += read_reward(reward_file.parent)
     pass_rate = round(passes / trials, 4) if trials else 0.0
     return {"passes": passes, "trials": trials, "pass_rate": pass_rate}
 
