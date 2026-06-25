@@ -21,7 +21,7 @@ fi
 # so a real id is required. List several ids to compare; each becomes a directory
 # under results/raw/. ("default" is a special label that omits --model — only valid
 # for agents like `oracle` that don't need one.)
-if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
+if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); else read -ra MODELS <<< "$MODELS"; fi
 
 # Force-inject the skill body into each with_skill prompt — for global-directive
 # skills (e.g. make-no-mistakes) that Codex won't auto-activate. Set FORCE_INJECT=1.
@@ -34,7 +34,7 @@ if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
 : "${REASONING_EFFORT:=}"
 
 # Tasks to run (directory names under tasks/).
-if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "rate-average" "percent-updown" "inclusive-count" "subtle-bug" "parse-constraint"); fi
+if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "rate-average" "percent-updown" "inclusive-count" "subtle-bug" "parse-constraint"); else read -ra TASKS <<< "$TASKS"; fi
 
 # Trials per (model, task, condition).
 : "${TRIALS:=3}"
