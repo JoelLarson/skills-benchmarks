@@ -24,3 +24,8 @@ uv run python scripts/build_site.py # -> site/index.html (preview locally)
 ```
 
 Push to `main`; GitHub Actions renders `results/summary.json` into the published site.
+
+## Publishing
+GitHub Pages is served via Actions. In repo Settings → Pages, set Source to
+"GitHub Actions". The site rebuilds from `results/summary.json` on every push to
+`main`.
