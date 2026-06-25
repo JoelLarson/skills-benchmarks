@@ -1,4 +1,21 @@
-# Remaining work (Podman flow)
+# Skill evaluator (primary entrypoint)
+
+End-to-end: fetch a skill → Codex proposes benchmarks (you confirm) → cost/time
+estimate → run no-skill vs with-skill slices → consolidated report.
+```bash
+bash scripts/eval_skill.sh <git-repo | gist-url | local-dir | .skill> \
+  [--benchmarks a,b] [--tasks-per-bench N] [--trials T] [--model M] [--yes]
+```
+- Validated end-to-end on Podman with Codex OAuth (humanevalfix slice, real agent runs).
+- Selection uses your host `codex login`; benchmark runs use `codex-acp` on Podman.
+- Harbor benchmarks run via `--source-repo laude-institute/harbor-datasets
+  --source-path datasets/<env> --include <task...>` (NOT `--source-env`, which is the
+  hosted-Verifiers path). First run clones the large harbor-datasets repo (cached after).
+- Report: `results/<skill>/site/index.html`.
+
+---
+
+# Remaining work (Podman flow — fixed three-task pilot)
 
 The harness is built and **validated on Podman end-to-end** with the keyless
 `oracle` agent: all three tasks pass their oracle gate, the negative control
