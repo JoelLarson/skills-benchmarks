@@ -34,7 +34,7 @@ if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
 : "${REASONING_EFFORT:=}"
 
 # Tasks to run (directory names under tasks/).
-if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "subtle-bug" "parse-constraint"); fi
+if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "rate-average" "percent-updown" "inclusive-count" "subtle-bug" "parse-constraint"); fi
 
 # Trials per (model, task, condition).
 : "${TRIALS:=3}"
