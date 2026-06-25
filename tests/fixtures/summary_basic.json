@@ -1,0 +1,20 @@
+{
+  "models": {
+    "claude-sonnet-4-6": {
+      "tasks": {
+        "arithmetic-trap": {
+          "no_skill": {"passes": 3, "trials": 3, "pass_rate": 1.0},
+          "with_skill": {"passes": 2, "trials": 3, "pass_rate": 0.6667},
+          "lift_pp": -33.3,
+          "regressions": 1
+        }
+      },
+      "overall": {
+        "no_skill_pass_rate": 1.0,
+        "with_skill_pass_rate": 0.6667,
+        "lift_pp": -33.3,
+        "regressions": 1
+      }
+    }
+  }
+}
