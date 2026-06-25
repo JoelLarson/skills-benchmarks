@@ -1,0 +1,12 @@
+# generated site (built by CI from results/)
+/site/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# bench scratch output (we copy rewards into results/raw ourselves)
+/.benchflow/
+/runs/

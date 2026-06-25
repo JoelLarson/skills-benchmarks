@@ -1,0 +1,12 @@
+[project]
+name = "skill-benchmarks"
+version = "0.1.0"
+description = "Benchmark agent skills with SkillsBench (no-skill vs with-skill)"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.4.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
