@@ -10,3 +10,4 @@ __pycache__/
 # bench scratch output (we copy rewards into results/raw ourselves)
 /.benchflow/
 /runs/
+/jobs/

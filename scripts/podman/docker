@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# docker -> podman shim.
+#
+# benchflow's docker sandbox shells out to the `docker` CLI: `docker info` plus
+# `docker compose ... build|up --detach --wait|down|cp|exec -T|run`. Podman's CLI
+# is a near drop-in for plain docker subcommands, but `docker compose` (Compose v2)
+# is best served by the real Compose v2 binary talking to the Podman API socket.
+#
+# This shim routes `docker compose ...` to Compose v2 (via DOCKER_HOST -> podman
+# socket) and sends everything else straight to podman.
+set -euo pipefail
+
+sock="${PODMAN_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/podman/podman.sock}"
+
+if [[ "${1:-}" == "compose" ]]; then
+  shift
+  export DOCKER_HOST="unix://${sock}"
+  if command -v docker-compose >/dev/null 2>&1; then
+    exec docker-compose "$@"
+  elif [[ -x "${HOME}/.docker/cli-plugins/docker-compose" ]]; then
+    exec "${HOME}/.docker/cli-plugins/docker-compose" "$@"
+  else
+    echo "docker-shim: Compose v2 not found; falling back to 'podman compose'" \
+         "(may fail on 'up --wait'). Run scripts/podman-setup.sh." >&2
+    exec podman compose "$@"
+  fi
+fi
+
+exec podman "$@"

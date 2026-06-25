@@ -1,84 +1,78 @@
-# Remaining work (run in an environment with Docker + API key)
+# Remaining work (Podman flow)
 
-The offline build is done: scaffolding, the `make-no-mistakes` skill, three task
-packages (`arithmetic-trap`, `subtle-bug`, `parse-constraint`), the
-`aggregate.py` + `build_site.py` harness (both tested), the GitHub Pages workflow,
-and the `run_pilot.sh`/`config.sh` scripts. The steps below are the parts that
-need **Docker running**, **Codex auth** (`OPENAI_API_KEY` or a Codex subscription
-login via `codex login` → `~/.codex/auth.json`), and the **`bench` CLI** —
-deferred because the authoring session had none of them. The agent under test is
-`codex-acp` (OpenAI Codex via ACP), so task-solving does **not** use the
-Anthropic API.
+The harness is built and **validated on Podman end-to-end** with the keyless
+`oracle` agent: all three tasks pass their oracle gate, the negative control
+fails as it should, and `run_pilot.sh → aggregate.py → build_site.py` produces a
+site. The only unproven piece is the real **`codex-acp`** agent, which needs your
+OpenAI/Codex auth.
 
-Full detail per step lives in
-`docs/plans/2026-06-24-skillsbench-make-no-mistakes.md` (Tasks 2, 4–6 gates, 9, 11).
+Full design detail: `docs/plans/2026-06-24-skillsbench-make-no-mistakes.md`.
 
-## Prereqs
+## Prereqs (one time)
+- **Podman** running and the **Docker-API socket** active:
+  `systemctl --user enable --now podman.socket`
+- **Compose v2** binary (bench uses `docker compose ... up --wait`; `podman-compose`
+  is unreliable for this). Install without sudo:
+  ```bash
+  mkdir -p ~/.local/bin
+  curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+    -o ~/.local/bin/docker-compose && chmod +x ~/.local/bin/docker-compose
+  ```
+- **bench**: `uv tool install "benchflow>=0.6.2,<0.7"` (you have 0.6.3).
+- **Codex auth** for the real runs: `codex login` (→ `~/.codex/auth.json`) or
+  `export OPENAI_API_KEY=...`. Verify: `bench agent show codex-acp`.
+
+Run the preflight to check all of the above:
 ```bash
-docker info >/dev/null && echo "docker ok"
-# Codex auth: either an API key...
-test -n "$OPENAI_API_KEY" && echo "openai key set"
-# ...or a subscription login:
-test -f ~/.codex/auth.json && echo "codex login present"
-bench agent show codex-acp   # confirm the adapter + auth model
+bash scripts/podman-setup.sh
 ```
 
-## 1. Vendor SkillsBench + install the CLI (Task 2)
+How Podman is wired: bench has no `--sandbox podman`, so `scripts/podman/docker`
+is a `docker`→`podman` shim (routing `docker compose` to Compose v2 against the
+Podman socket). `run_pilot.sh` and `scripts/bench-podman.sh` put it on `PATH`
+automatically when `USE_PODMAN=1` (the default in `scripts/config.sh`). For ad-hoc
+bench commands use the wrapper:
 ```bash
-git submodule add https://github.com/benchflow-ai/skillsbench.git skillsbench
-cd skillsbench && git fetch --tags
-git checkout skillsbench-v1.1 2>/dev/null || git tag --list 'skillsbench-*'   # pick latest stable if v1.1 absent
-cd ..
-uv tool install "benchflow>=0.6.2,<0.7"
-bench --help
-git add .gitmodules skillsbench && git commit -m "build: vendor SkillsBench as pinned submodule"
+scripts/bench-podman.sh eval run --tasks-dir tasks/arithmetic-trap --agent oracle --sandbox docker
 ```
-**Watch-out:** confirm the actual tag name (`skillsbench-v1.1` is assumed, unverified).
 
-## 2. Validate tasks + oracle gate + negative control (Tasks 4–6)
-Each task must validate and its oracle must resolve (reward 1):
+## 1. Vendor SkillsBench — DONE
+Submodule already added.
+
+## 2. Tasks validated on Podman — DONE
+Oracle gates pass (reward 1) for all three tasks; arithmetic-trap negative control
+fails (reward 0). To re-check:
 ```bash
 for t in arithmetic-trap subtle-bug parse-constraint; do
-  bench tasks check tasks/$t
-  bench eval run --tasks-dir tasks/$t --agent oracle --sandbox docker   # expect: resolved / reward 1
+  scripts/bench-podman.sh eval run --tasks-dir tasks/$t --agent oracle --sandbox docker --jobs-dir jobs-check/$t
 done
+rm -rf jobs-check
 ```
-Negative control (verifier must reject a wrong answer):
-```bash
-sed -i 's/353.33/337.74/' tasks/arithmetic-trap/oracle/solve.sh
-bench eval run --tasks-dir tasks/arithmetic-trap --agent oracle --sandbox docker   # expect: reward 0
-git checkout tasks/arithmetic-trap/oracle/solve.sh
-```
-If `bench tasks check` flags a frontmatter field, mirror the shape from
-`skillsbench/tasks/offer-letter-generator/task.md` and re-run.
 
-## 3. Discover the reward path, then wire config (Task 9 Step 1)
-The one value that couldn't be verified from docs: where `bench` writes
-`reward.txt` on the host.
-```bash
-bench eval run --tasks-dir tasks/arithmetic-trap --agent codex-acp \
-  --sandbox docker --skill-mode no-skill
-find . -name reward.txt -newermt '-10 minutes'
-```
-Set `BENCH_REWARD_GLOB` in `scripts/config.sh` to match that directory pattern
-(default assumes `runs/**/reward.txt`).
+## 3. Reward path — RESOLVED
+bench writes `jobs/<timestamp>/<task>__<hash>/verifier/reward.txt`. `run_pilot.sh`
+gives each trial its own `--jobs-dir` (independent runs; bench otherwise *resumes*
+/ skips an already-completed task) and copies the reward to
+`results/raw/<model>/<task>/<condition>/trial-<n>/reward.txt`.
 
-## 4. Run the pilot, aggregate, publish (Task 11)
+## 4. Run the pilot (needs Codex auth)
 ```bash
-bash scripts/run_pilot.sh                  # 3 tasks x 2 conditions x 3 trials = 18 runs
-uv run python scripts/aggregate.py         # -> results/summary.json
-uv run python scripts/build_site.py        # -> site/index.html (local preview)
-uv run pytest -q                           # all green
-git add results/raw results/summary.json
-git commit -m "data: pilot results for make-no-mistakes (sonnet)"
-git push -u origin main
+bash scripts/podman-setup.sh          # confirm green
+bash scripts/run_pilot.sh             # codex-acp, 3 tasks × 2 conditions × 3 trials = 18 runs
+uv run python scripts/aggregate.py    # → results/summary.json
+uv run python scripts/build_site.py   # → site/index.html (preview locally)
+uv run pytest -q                      # harness tests stay green
+git add results/raw results/summary.json && git commit -m "data: pilot results"
+git push -u origin main               # then Settings → Pages → Source: GitHub Actions
 ```
-Then in the GitHub repo: **Settings → Pages → Source: GitHub Actions**. The
-"Publish benchmark site" workflow renders the per-model table.
+Smoke-test the pipeline first without Codex auth:
+`AGENT=oracle TRIALS=1 bash scripts/run_pilot.sh` (everything passes; lift 0).
 
 ## Reading the result
-This is **regression detection**: a *negative* overall lift or a nonzero
-regression count is the evidence that `make-no-mistakes` made the model evaluate
-*worse*. `parse-constraint` (deliberately easy) is the task most likely to expose
-over-caution backfiring. To add models, append ids to `MODELS` in
-`scripts/config.sh` and re-run.
+Regression detection: a **negative overall lift** or **nonzero regression count**
+is the evidence that `make-no-mistakes` made Codex *worse*. `parse-constraint`
+(deliberately easy) is the task most likely to expose over-caution backfiring. Add
+models by listing ids in `MODELS` in `scripts/config.sh` and re-running.
+
+Bonus: each trial also captures `timing.json` (tokens/time) into its `results/raw`
+dir — available to wire into the report later.

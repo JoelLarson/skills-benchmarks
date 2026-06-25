@@ -21,7 +21,7 @@ verifier:
 agent:
   timeout_sec: 600
 environment:
-  network_mode: none
+  network_mode: no-network
   build_timeout_sec: 600
   os: linux
   cpus: 1
