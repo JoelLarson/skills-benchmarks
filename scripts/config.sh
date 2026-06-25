@@ -6,6 +6,17 @@
 # smoke test of the pipeline.
 AGENT="${AGENT:-codex-acp}"
 
+# codex-acp authenticates with your `codex login` OAuth (ChatGPT/Codex subscription),
+# NOT an API key. bench writes the container's ~/.codex/auth.json from CODEX_AUTH_JSON,
+# and only takes the subscription path when OPENAI_API_KEY is UNSET. So for codex-acp:
+# load the OAuth json from the host and drop any OPENAI_API_KEY from the environment.
+if [[ "$AGENT" == "codex-acp" ]]; then
+  if [[ -z "${CODEX_AUTH_JSON:-}" && -f "$HOME/.codex/auth.json" ]]; then
+    export CODEX_AUTH_JSON="$(cat "$HOME/.codex/auth.json")"
+  fi
+  unset OPENAI_API_KEY 2>/dev/null || true
+fi
+
 # Models to evaluate (the --model passed to codex-acp). codex-acp has no default,
 # so a real id is required. List several ids to compare; each becomes a directory
 # under results/raw/. ("default" is a special label that omits --model — only valid
