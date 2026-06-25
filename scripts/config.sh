@@ -6,10 +6,15 @@
 # smoke test of the pipeline.
 AGENT="${AGENT:-codex-acp}"
 
-# Models to evaluate. "default" omits --model so Codex uses its configured model.
-# Replace with explicit OpenAI/Codex model ids to compare (e.g. "gpt-5-codex"),
-# one entry per model. Each becomes a directory under results/raw/.
-if [[ -z "${MODELS+x}" ]]; then MODELS=("default"); fi
+# Models to evaluate (the --model passed to codex-acp). codex-acp has no default,
+# so a real id is required. List several ids to compare; each becomes a directory
+# under results/raw/. ("default" is a special label that omits --model — only valid
+# for agents like `oracle` that don't need one.)
+if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
+
+# Reasoning/thinking effort for agents that expose one (codex: low|medium|high...).
+# Empty string omits --reasoning-effort.
+: "${REASONING_EFFORT:=medium}"
 
 # Tasks to run (directory names under tasks/).
 if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "subtle-bug" "parse-constraint"); fi

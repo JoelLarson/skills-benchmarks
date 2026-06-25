@@ -24,6 +24,7 @@ run_one() {
 
   local model_args=()
   [[ "$model" != "default" ]] && model_args=(--model "$model")
+  [[ -n "${REASONING_EFFORT:-}" ]] && model_args+=(--reasoning-effort "$REASONING_EFFORT")
 
   # A unique, fresh jobs dir per trial guarantees an independent run (bench resumes
   # — i.e. skips — tasks already present in a jobs dir) and a deterministic reward path.
