@@ -50,8 +50,10 @@ SkillsBench's deterministic, reproducible verifiers.
    `skillsbench-v1.1`) under `skillsbench/`, with a `.gitignore` fallback if
    vendoring is undesired. Installed with
    `uv tool install "benchflow>=0.6.2,<0.7"` + `uv sync --locked`.
-   Prereqs: Python 3.12+, Docker, `ANTHROPIC_API_KEY` (later other provider keys
-   as more models are added).
+   Prereqs: Python 3.12+, Docker, and Codex auth (`OPENAI_API_KEY` or a Codex
+   subscription login via `~/.codex/auth.json`). The agent under test is
+   `codex-acp` (OpenAI Codex via ACP), chosen so task-solving runs do not consume
+   the Anthropic API.
 
 2. **Packaged skill** — the gist converted to a SkillsBench-consumable folder
    `skills/make-no-mistakes/SKILL.md` (frontmatter `name` + `description`, then
@@ -88,15 +90,18 @@ SkillsBench's deterministic, reproducible verifiers.
 
 4. **Run harness** — `scripts/run_pilot.sh`, parametrized over
    **model × condition × trial**:
-   - Models: a list, starting with `claude-sonnet-4-6`; more added later.
+   - Agent under test: `codex-acp` (alias `codex`). `--model` selects the Codex
+     model; omit it (config label `default`) to use Codex's configured model.
+   - Models: a list (config label `default` to start; explicit Codex/OpenAI model
+     ids added later to compare).
    - Conditions: `no-skill`, `with-skill`.
    - Trials: 3 (a `--n-trials` upstream flag is **unverified**, so trials are
      driven by a shell loop).
    ```
-   bench eval run --tasks-dir tasks/<id> --agent claude-agent-acp \
-     --model <model> --sandbox docker --skill-mode no-skill
-   bench eval run --tasks-dir tasks/<id> --agent claude-agent-acp \
-     --model <model> --sandbox docker --skill-mode with-skill --skills-dir skills/
+   bench eval run --tasks-dir tasks/<id> --agent codex-acp \
+     --sandbox docker --skill-mode no-skill
+   bench eval run --tasks-dir tasks/<id> --agent codex-acp \
+     --sandbox docker --skill-mode with-skill --skills-dir skills/
    ```
    Pilot size: 3 tasks × 2 conditions × 3 trials × 1 model = **18 runs**.
 

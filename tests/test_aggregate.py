@@ -14,7 +14,7 @@ def write_reward(base, model, task, cond, trial, value):
 
 def test_aggregate_produces_summary(tmp_path):
     results = tmp_path
-    m = "claude-sonnet-4-6"
+    m = "default"
     # arithmetic-trap: baseline 3/3, skill 2/3  -> lift -33.3, 1 regression
     write_reward(results, m, "arithmetic-trap", "no_skill", 1, 1)
     write_reward(results, m, "arithmetic-trap", "no_skill", 2, 1)

@@ -24,9 +24,12 @@ run_one() {
     extra=(--skill-mode no-skill)
   fi
 
-  echo ">> $model | $task | $cond | trial $trial"
-  bench eval run --tasks-dir "tasks/$task" --agent claude-agent-acp \
-    --model "$model" --sandbox docker "${extra[@]}"
+  local model_args=()
+  [[ "$model" != "default" ]] && model_args=(--model "$model")
+
+  echo ">> $AGENT | $model | $task | $cond | trial $trial"
+  bench eval run --tasks-dir "tasks/$task" --agent "$AGENT" \
+    "${model_args[@]}" --sandbox docker "${extra[@]}"
 
   local src dest
   src="$(newest_reward)"

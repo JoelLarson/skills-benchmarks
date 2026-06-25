@@ -2,6 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠️ Agent change (post-authoring):** The agent under test is now **`codex-acp`**
+> (OpenAI Codex via ACP; auth via `OPENAI_API_KEY` or `~/.codex/auth.json`), **not**
+> `claude-agent-acp`, so task-solving does not use the Anthropic API. The model is
+> chosen via `--model` (omit it / use the config label `default` for Codex's
+> default). Where snippets below still say `--agent claude-agent-acp --model
+> claude-sonnet-4-6`, substitute `--agent codex-acp` (model optional). The
+> authoritative, up-to-date commands live in **`scripts/config.sh`**,
+> **`scripts/run_pilot.sh`**, and **`docs/REMAINING.md`**.
+
 **Goal:** Build a repeatable harness that runs SkillsBench `no-skill` vs `with-skill` over three error-prone tasks to detect whether the `make-no-mistakes` skill changes (especially degrades) model accuracy, and publishes the comparison to GitHub Pages.
 
 **Architecture:** Expensive evals run locally via the SkillsBench CLI (`bench`, Docker sandbox) and write a normalized `results/raw/<model>/<task>/<condition>/trial-<n>/reward.txt` tree. Two stdlib-only Python scripts turn that tree into `results/summary.json` and then a static `site/`. A GitHub Actions workflow renders + deploys the site on every push to `main` — CI never runs the costly evals.

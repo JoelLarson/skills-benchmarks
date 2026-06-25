@@ -1,6 +1,13 @@
 #!/bin/bash
-# Models to evaluate (start with Sonnet; add more ids here later).
-MODELS=("claude-sonnet-4-6")
+# Agent under test (the "prompt runner"). codex-acp = OpenAI Codex via ACP,
+# authenticated with OPENAI_API_KEY or a Codex subscription login (~/.codex/auth.json).
+# This keeps task-solving off the Anthropic API. See `bench agent list`.
+AGENT="codex-acp"
+
+# Models to evaluate. "default" omits --model so Codex uses its configured model.
+# Replace with explicit OpenAI/Codex model ids to compare (e.g. "gpt-5-codex"),
+# one entry per model. Each becomes a directory under results/raw/.
+MODELS=("default")
 
 # Tasks to run (directory names under tasks/).
 TASKS=("arithmetic-trap" "subtle-bug" "parse-constraint")

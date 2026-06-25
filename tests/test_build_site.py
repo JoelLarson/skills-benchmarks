@@ -16,7 +16,7 @@ def test_build_site_renders_expected_content(tmp_path):
     assert res.returncode == 0, res.stderr
 
     html = (out_dir / "index.html").read_text()
-    assert "claude-sonnet-4-6" in html
+    assert "default" in html
     assert "arithmetic-trap" in html
     assert "-33.3" in html
     assert "Regressions" in html

@@ -1,6 +1,6 @@
 {
   "models": {
-    "claude-sonnet-4-6": {
+    "default": {
       "tasks": {
         "arithmetic-trap": {
           "no_skill": {"passes": 3, "trials": 3, "pass_rate": 1.0},

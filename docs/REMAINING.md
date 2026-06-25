@@ -4,8 +4,11 @@ The offline build is done: scaffolding, the `make-no-mistakes` skill, three task
 packages (`arithmetic-trap`, `subtle-bug`, `parse-constraint`), the
 `aggregate.py` + `build_site.py` harness (both tested), the GitHub Pages workflow,
 and the `run_pilot.sh`/`config.sh` scripts. The steps below are the parts that
-need **Docker running**, **`ANTHROPIC_API_KEY` exported**, and the **`bench` CLI**
-— deferred because the authoring session had none of them.
+need **Docker running**, **Codex auth** (`OPENAI_API_KEY` or a Codex subscription
+login via `codex login` → `~/.codex/auth.json`), and the **`bench` CLI** —
+deferred because the authoring session had none of them. The agent under test is
+`codex-acp` (OpenAI Codex via ACP), so task-solving does **not** use the
+Anthropic API.
 
 Full detail per step lives in
 `docs/plans/2026-06-24-skillsbench-make-no-mistakes.md` (Tasks 2, 4–6 gates, 9, 11).
@@ -13,7 +16,11 @@ Full detail per step lives in
 ## Prereqs
 ```bash
 docker info >/dev/null && echo "docker ok"
-test -n "$ANTHROPIC_API_KEY" && echo "key set"
+# Codex auth: either an API key...
+test -n "$OPENAI_API_KEY" && echo "openai key set"
+# ...or a subscription login:
+test -f ~/.codex/auth.json && echo "codex login present"
+bench agent show codex-acp   # confirm the adapter + auth model
 ```
 
 ## 1. Vendor SkillsBench + install the CLI (Task 2)
@@ -49,8 +56,8 @@ If `bench tasks check` flags a frontmatter field, mirror the shape from
 The one value that couldn't be verified from docs: where `bench` writes
 `reward.txt` on the host.
 ```bash
-bench eval run --tasks-dir tasks/arithmetic-trap --agent claude-agent-acp \
-  --model claude-sonnet-4-6 --sandbox docker --skill-mode no-skill
+bench eval run --tasks-dir tasks/arithmetic-trap --agent codex-acp \
+  --sandbox docker --skill-mode no-skill
 find . -name reward.txt -newermt '-10 minutes'
 ```
 Set `BENCH_REWARD_GLOB` in `scripts/config.sh` to match that directory pattern

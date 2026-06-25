@@ -6,7 +6,9 @@ comparing an unprompted model against the same model with the skill injected.
 ## Prereqs
 - Docker (running)
 - Python 3.12+ and [uv](https://docs.astral.sh/uv/)
-- `ANTHROPIC_API_KEY` exported
+- The agent under test is **Codex** (`codex-acp`), so you need either
+  `OPENAI_API_KEY` exported or a Codex subscription login (`~/.codex/auth.json`
+  via `codex login`). No Anthropic key is needed for runs.
 
 ## Setup
 ```bash
