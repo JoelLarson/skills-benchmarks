@@ -36,6 +36,12 @@ bash scripts/eval_skill.sh <skill-source>           # git repo / gist URL / loca
 - Codex (your `codex login`) picks benchmarks from the harbor registry based on the
   skill's `SKILL.md`; you approve/edit before anything runs.
 - Skip selection with `--benchmarks humanevalfix,quixbugs`; skip all prompts with `--yes`.
+- `--force-inject`: for **global-directive** skills that Codex won't auto-activate
+  (e.g. `make-no-mistakes`), append the skill's body to every `with_skill` task
+  prompt so its guidance is always applied. The `no_skill` baseline is unchanged,
+  so the only difference between conditions is the injected directive. Without this,
+  Codex only loads a skill when a `$name` mention or command-pattern triggers it, so
+  a passive skill shows no effect.
 - Report lands at `results/<skill>/site/index.html` (per-benchmark pass-rate, Skill
   Lift, regressions, plus Codex's selection rationale).
 

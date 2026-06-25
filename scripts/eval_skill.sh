@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
 
-SOURCE=""; BENCHMARKS=""; TPB=10; TRIALS=3; YES=0; MODEL="gpt-5.5"; NAME=""
+SOURCE=""; BENCHMARKS=""; TPB=10; TRIALS=3; YES=0; MODEL="gpt-5.5"; NAME=""; FORCE_INJECT=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --benchmarks) BENCHMARKS="$2"; shift 2;;
@@ -18,12 +18,13 @@ while [[ $# -gt 0 ]]; do
     --trials) TRIALS="$2"; shift 2;;
     --model) MODEL="$2"; shift 2;;
     --name) NAME="$2"; shift 2;;
+    --force-inject) FORCE_INJECT=1; shift;;
     --yes) YES=1; shift;;
     -*) echo "unknown flag: $1" >&2; exit 1;;
     *) SOURCE="$1"; shift;;
   esac
 done
-[[ -n "$SOURCE" ]] || { echo "usage: eval_skill.sh <skill-source> [--benchmarks a,b] [--tasks-per-bench N] [--trials T] [--model M] [--yes]" >&2; exit 1; }
+[[ -n "$SOURCE" ]] || { echo "usage: eval_skill.sh <skill-source> [--benchmarks a,b] [--tasks-per-bench N] [--trials T] [--model M] [--force-inject] [--yes]" >&2; exit 1; }
 
 # 1. Fetch skill -------------------------------------------------------------
 SKILLS_DIR="$(bash scripts/fetch_skill.sh "$SOURCE" ${NAME:+"$NAME"} | tail -1)"
@@ -31,6 +32,17 @@ SKILL_NAME="$(basename "$SKILLS_DIR")"
 RES="results/$SKILL_NAME"
 mkdir -p "$RES"
 echo "Skill: $SKILL_NAME   (skills-dir: $SKILLS_DIR)"
+
+# Force-inject: append the skill's body (frontmatter stripped) to each with_skill
+# task prompt. Faithful for global-directive skills (e.g. make-no-mistakes) that
+# Codex won't auto-activate. The no_skill baseline is unchanged.
+SKILL_BODY=""
+if [[ "$FORCE_INJECT" == "1" ]]; then
+  SMD="$(find "$SKILLS_DIR" -name SKILL.md | head -1)"
+  SKILL_BODY="$(awk 'BEGIN{f=0} /^---[[:space:]]*$/{f++; next} f>=2{print}' "$SMD")"
+  [[ -n "$SKILL_BODY" ]] || SKILL_BODY="$(cat "$SMD")"  # no frontmatter -> whole file
+  echo "Force-inject ON: appending the skill directive to every with_skill prompt."
+fi
 
 # 2. Select benchmarks -------------------------------------------------------
 if [[ -z "$BENCHMARKS" ]]; then
@@ -69,6 +81,22 @@ if [[ "$YES" != "1" ]]; then
 fi
 
 # 4. Run no_skill vs with_skill ---------------------------------------------
+copy_rewards() {  # <jobs-dir> <bench> <cond> <trial>
+  while IFS= read -r rf; do
+    local sub dest
+    sub="$(basename "$(dirname "$(dirname "$rf")")")"
+    dest="$RES/raw/$MODEL/$2/$3/trial-$4/$sub"; mkdir -p "$dest"
+    cp "$rf" "$dest/reward.txt"
+  done < <(find "$1" -name reward.txt 2>/dev/null)
+}
+instr_file() {  # <task> -> path to its cached instruction (snapshot), else empty
+  local p
+  for f in instruction.md task.md; do
+    p=".cache/datasets/${REPO}__snapshots/${REF}/${SRCPATH}/$1/$f"
+    [[ -f "$p" ]] && { echo "$p"; return; }
+  done
+}
+
 for bench in "${BENCH_ARR[@]}"; do
   spec="$(bench hub list --provider harbor --search "$bench" --limit 10 --json 2>/dev/null \
           | python3 scripts/bench_spec.py "$bench" "$TPB")" || {
@@ -79,20 +107,37 @@ for bench in "${BENCH_ARR[@]}"; do
   inc=(); for t in "${TASK_ARR[@]}"; do inc+=(--include "$t"); done
 
   for cond in no_skill with_skill; do
-    skillargs=(--skill-mode no-skill)
-    [[ "$cond" == "with_skill" ]] && skillargs=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
     for trial in $(seq 1 "$TRIALS"); do
       jd="jobs/$SKILL_NAME/$bench/$cond/trial-$trial"; rm -rf "$jd"
-      echo ">> $bench | $cond | trial $trial (${#TASK_ARR[@]} tasks)"
-      scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
-        --source-path "$SRCPATH" "${inc[@]}" --agent codex-acp --model "$MODEL" \
-        --sandbox docker "${skillargs[@]}" --jobs-dir "$jd" || true
-      # normalize each sub-task reward into the results tree
-      while IFS= read -r rf; do
-        sub="$(basename "$(dirname "$(dirname "$rf")")")"
-        dest="$RES/raw/$MODEL/$bench/$cond/trial-$trial/$sub"; mkdir -p "$dest"
-        cp "$rf" "$dest/reward.txt"
-      done < <(find "$jd" -name reward.txt 2>/dev/null)
+
+      if [[ "$cond" == "with_skill" && "$FORCE_INJECT" == "1" ]]; then
+        # Faithful force-inject: append the skill's directive to each task's own
+        # prompt (instruction.md). Only difference vs baseline is the directive.
+        echo ">> $bench | with_skill (force-inject) | trial $trial (per-task)"
+        for t in "${TASK_ARR[@]}"; do
+          inf="$(instr_file "$t")"
+          if [[ -n "$inf" ]]; then
+            prompt="$(cat "$inf")"$'\n\n'"$SKILL_BODY"
+            scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
+              --source-path "$SRCPATH" --include "$t" --agent codex-acp --model "$MODEL" \
+              --sandbox docker --skill-mode no-skill --prompt "$prompt" --jobs-dir "$jd/$t" || true
+          else
+            echo "WARN: no cached instruction for $t; using native skill injection" >&2
+            scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
+              --source-path "$SRCPATH" --include "$t" --agent codex-acp --model "$MODEL" \
+              --sandbox docker --skill-mode with-skill --skills-dir "$SKILLS_DIR" --jobs-dir "$jd/$t" || true
+          fi
+        done
+      else
+        skillargs=(--skill-mode no-skill)
+        [[ "$cond" == "with_skill" ]] && skillargs=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
+        echo ">> $bench | $cond | trial $trial (${#TASK_ARR[@]} tasks)"
+        scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
+          --source-path "$SRCPATH" "${inc[@]}" --agent codex-acp --model "$MODEL" \
+          --sandbox docker "${skillargs[@]}" --jobs-dir "$jd" || true
+      fi
+
+      copy_rewards "$jd" "$bench" "$cond" "$trial"
     done
   done
 done
@@ -100,8 +145,9 @@ done
 # 5. Aggregate + report ------------------------------------------------------
 uv run python scripts/aggregate.py --results-dir "$RES"
 sel_arg=(); [[ -f "$RES/selection.json" ]] && sel_arg=(--selection "$RES/selection.json")
+title="$SKILL_NAME"; [[ "$FORCE_INJECT" == "1" ]] && title="$SKILL_NAME (force-inject)"
 uv run python scripts/build_site.py --summary "$RES/summary.json" --out "$RES/site" \
-  --title "$SKILL_NAME" "${sel_arg[@]}"
+  --title "$title" "${sel_arg[@]}"
 
 echo ""
 echo "Done. Report: $RES/site/index.html   Summary: $RES/summary.json"
