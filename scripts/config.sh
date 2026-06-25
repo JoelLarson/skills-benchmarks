@@ -12,9 +12,11 @@ AGENT="${AGENT:-codex-acp}"
 # for agents like `oracle` that don't need one.)
 if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); fi
 
-# Reasoning/thinking effort for agents that expose one (codex: low|medium|high...).
-# Empty string omits --reasoning-effort.
-: "${REASONING_EFFORT:=medium}"
+# Reasoning/thinking effort, passed as --reasoning-effort to agents that expose it.
+# IMPORTANT: codex-acp does NOT accept this flag (it errors). Leave empty for codex
+# — bench already maps a bare codex model to its 'medium'-effort session id by
+# default. Only set this for agents that declare an ACP effort option.
+: "${REASONING_EFFORT:=}"
 
 # Tasks to run (directory names under tasks/).
 if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "subtle-bug" "parse-constraint"); fi
