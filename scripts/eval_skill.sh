@@ -9,6 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
+source scripts/lib_run.sh   # quota_blocked, quota_wait_secs, RESUME, MAX_QUOTA_WAITS
 
 SOURCE=""; BENCHMARKS=""; TPB=10; TRIALS=3; YES=0; MODEL="gpt-5.5"; NAME=""; FORCE_INJECT=0
 while [[ $# -gt 0 ]]; do
@@ -80,20 +81,65 @@ if [[ "$YES" != "1" ]]; then
   [[ "${go:-}" == "y" || "${go:-}" == "Y" ]] || { echo "Aborted before running."; exit 0; }
 fi
 
-# 4. Run no_skill vs with_skill ---------------------------------------------
-copy_rewards() {  # <jobs-dir> <bench> <cond> <trial>
-  while IFS= read -r rf; do
-    local sub dest
-    sub="$(basename "$(dirname "$(dirname "$rf")")")"
-    dest="$RES/raw/$MODEL/$2/$3/trial-$4/$sub"; mkdir -p "$dest"
-    cp "$rf" "$dest/reward.txt"
-  done < <(find "$1" -name reward.txt 2>/dev/null)
-}
+# 4. Run no_skill vs with_skill (per-task cells: resumable + quota-resilient) ---
 instr_file() {  # <task> -> path to its cached instruction (snapshot), else empty
   local p
   for f in instruction.md task.md; do
     p=".cache/datasets/${REPO}__snapshots/${REF}/${SRCPATH}/$1/$f"
     [[ -f "$p" ]] && { echo "$p"; return; }
+  done
+}
+
+# Run one (bench, cond, trial, task) cell. Resumes if already done; on a quota
+# block, waits until reset and retries so a long run survives quota exhaustion.
+run_harbor_cell() {  # <bench> <cond> <trial> <task>   (uses REPO/REF/SRCPATH)
+  local bench="$1" cond="$2" trial="$3" t="$4"
+  local dest="$RES/raw/$MODEL/$bench/$cond/trial-$trial/$t"
+  if [[ "${RESUME:-1}" == "1" && -f "$dest/reward.txt" ]]; then
+    echo "== skip (done): $bench | $cond | trial $trial | $t"; return 0
+  fi
+
+  local args=(--source-repo "$REPO" --source-ref "$REF" --source-path "$SRCPATH"
+              --include "$t" --agent codex-acp --model "$MODEL" --sandbox docker)
+  if [[ "$cond" == "with_skill" ]]; then
+    if [[ "$FORCE_INJECT" == "1" ]]; then
+      local inf; inf="$(instr_file "$t")"
+      if [[ -n "$inf" ]]; then
+        args+=(--skill-mode no-skill --prompt "$(cat "$inf")"$'\n\n'"$SKILL_BODY")
+      else
+        echo "WARN: no cached instruction for $t; native skill injection" >&2
+        args+=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
+      fi
+    else
+      args+=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
+    fi
+  else
+    args+=(--skill-mode no-skill)
+  fi
+
+  local waits=0
+  while true; do
+    local jd="jobs/$SKILL_NAME/$bench/$cond/trial-$trial/$t"; rm -rf "$jd"; mkdir -p "$jd"
+    local log="$jd/run.log"
+    echo ">> $bench | $cond | trial $trial | $t"
+    scripts/bench-podman.sh eval run "${args[@]}" --jobs-dir "$jd" 2>&1 | tee "$log" || true
+
+    local rf tm; rf="$(find "$jd" -name reward.txt | head -1)"
+    if [[ -n "$rf" ]]; then
+      mkdir -p "$dest"; cp "$rf" "$dest/reward.txt"
+      tm="$(find "$jd" -name timing.json | head -1)"; [[ -n "$tm" ]] && cp "$tm" "$dest/timing.json" || true
+      return 0
+    fi
+    if quota_blocked "$log"; then
+      waits=$((waits + 1))
+      if (( waits > MAX_QUOTA_WAITS )); then
+        echo "!! gave up on $bench/$cond/$t after $((waits - 1)) quota waits" >&2; return 1
+      fi
+      local secs; secs="$(quota_wait_secs "$log")"
+      echo "== quota exhausted; sleeping ${secs}s until reset, then retry [$bench/$cond/$t, $waits/$MAX_QUOTA_WAITS]"
+      sleep "$secs"; continue
+    fi
+    echo "!! no reward, not quota-blocked: $bench/$cond/$t — skipping" >&2; return 1
   done
 }
 
@@ -104,40 +150,12 @@ for bench in "${BENCH_ARR[@]}"; do
   eval "$spec"   # sets REPO REF SRCPATH TASKS
   read -ra TASK_ARR <<< "$TASKS"
   [[ ${#TASK_ARR[@]} -gt 0 ]] || { echo "WARN: no tasks for $bench; skipping" >&2; continue; }
-  inc=(); for t in "${TASK_ARR[@]}"; do inc+=(--include "$t"); done
 
   for cond in no_skill with_skill; do
     for trial in $(seq 1 "$TRIALS"); do
-      jd="jobs/$SKILL_NAME/$bench/$cond/trial-$trial"; rm -rf "$jd"
-
-      if [[ "$cond" == "with_skill" && "$FORCE_INJECT" == "1" ]]; then
-        # Faithful force-inject: append the skill's directive to each task's own
-        # prompt (instruction.md). Only difference vs baseline is the directive.
-        echo ">> $bench | with_skill (force-inject) | trial $trial (per-task)"
-        for t in "${TASK_ARR[@]}"; do
-          inf="$(instr_file "$t")"
-          if [[ -n "$inf" ]]; then
-            prompt="$(cat "$inf")"$'\n\n'"$SKILL_BODY"
-            scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
-              --source-path "$SRCPATH" --include "$t" --agent codex-acp --model "$MODEL" \
-              --sandbox docker --skill-mode no-skill --prompt "$prompt" --jobs-dir "$jd/$t" || true
-          else
-            echo "WARN: no cached instruction for $t; using native skill injection" >&2
-            scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
-              --source-path "$SRCPATH" --include "$t" --agent codex-acp --model "$MODEL" \
-              --sandbox docker --skill-mode with-skill --skills-dir "$SKILLS_DIR" --jobs-dir "$jd/$t" || true
-          fi
-        done
-      else
-        skillargs=(--skill-mode no-skill)
-        [[ "$cond" == "with_skill" ]] && skillargs=(--skill-mode with-skill --skills-dir "$SKILLS_DIR")
-        echo ">> $bench | $cond | trial $trial (${#TASK_ARR[@]} tasks)"
-        scripts/bench-podman.sh eval run --source-repo "$REPO" --source-ref "$REF" \
-          --source-path "$SRCPATH" "${inc[@]}" --agent codex-acp --model "$MODEL" \
-          --sandbox docker "${skillargs[@]}" --jobs-dir "$jd" || true
-      fi
-
-      copy_rewards "$jd" "$bench" "$cond" "$trial"
+      for t in "${TASK_ARR[@]}"; do
+        run_harbor_cell "$bench" "$cond" "$trial" "$t" || true
+      done
     done
   done
 done

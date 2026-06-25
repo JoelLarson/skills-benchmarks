@@ -45,6 +45,25 @@ bash scripts/eval_skill.sh <skill-source>           # git repo / gist URL / loca
 - Report lands at `results/<skill>/site/index.html` (per-benchmark pass-rate, Skill
   Lift, regressions, plus Codex's selection rationale).
 
+### Long runs that survive quota exhaustion
+Runs are **per-task, resumable, and quota-resilient** (both `eval_skill.sh` and
+`run_pilot.sh`). When Codex hits its usage limit, the current cell waits until the
+reset window (parsed from Codex's "try again at H:MM", else `QUOTA_FALLBACK_WAIT`)
+and retries — rather than failing every remaining cell. Knobs (env vars):
+- `RESUME=1` (default) — skip cells whose `reward.txt` already exists; just re-run
+  the same command to continue a run that was interrupted or partially completed.
+- `MAX_QUOTA_WAITS=48` — give up on a cell after this many consecutive quota waits.
+- `QUOTA_FALLBACK_WAIT=1800` — seconds to wait when no reset time is in the log.
+
+For a multi-hour benchmark, run it detached so it keeps sleeping/retrying across
+quota windows:
+```bash
+nohup bash scripts/eval_skill.sh skills/make-no-mistakes \
+  --benchmarks swebench-verified --tasks-per-bench 10 --trials 3 --force-inject --yes \
+  > eval.log 2>&1 &
+tail -f eval.log     # watch progress; re-run the same command anytime to resume
+```
+
 Example (tiny smoke, no prompts):
 ```bash
 bash scripts/eval_skill.sh skills/make-no-mistakes \
