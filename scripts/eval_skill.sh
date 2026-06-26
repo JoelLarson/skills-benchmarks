@@ -128,6 +128,8 @@ run_harbor_cell() {  # <bench> <cond> <trial> <task>   (uses REPO/REF/SRCPATH)
     if [[ -n "$rf" ]]; then
       mkdir -p "$dest"; cp "$rf" "$dest/reward.txt"
       tm="$(find "$jd" -name timing.json | head -1)"; [[ -n "$tm" ]] && cp "$tm" "$dest/timing.json" || true
+      extract_usage "$jd" "$dest/usage.json" || true
+      capture_log "$jd" "$dest" || true
       return 0
     fi
     if quota_blocked "$log"; then

@@ -69,6 +69,8 @@ run_one() {
       mkdir -p "$dest"; cp "$src" "$dest/reward.txt"
       timing="$(find "$jobsdir" -name timing.json | head -1)"
       [[ -n "$timing" ]] && cp "$timing" "$dest/timing.json" || true
+      extract_usage "$jobsdir" "$dest/usage.json" || true
+      capture_log "$jobsdir" "$dest" || true
       return 0
     fi
 
