@@ -1,0 +1,70 @@
+{
+  "models": {
+    "gpt-5.5": {
+      "tasks": {
+        "arithmetic-trap": {
+          "no_skill": {
+            "passes": 0,
+            "trials": 3,
+            "pass_rate": 0.0
+          },
+          "with_skill": {
+            "passes": 2,
+            "trials": 3,
+            "pass_rate": 0.6667
+          },
+          "lift_pp": 66.7,
+          "regressions": 0
+        },
+        "invoice-chain": {
+          "no_skill": {
+            "passes": 1,
+            "trials": 3,
+            "pass_rate": 0.3333
+          },
+          "with_skill": {
+            "passes": 3,
+            "trials": 3,
+            "pass_rate": 1.0
+          },
+          "lift_pp": 66.7,
+          "regressions": 0
+        },
+        "payroll-net": {
+          "no_skill": {
+            "passes": 0,
+            "trials": 3,
+            "pass_rate": 0.0
+          },
+          "with_skill": {
+            "passes": 1,
+            "trials": 3,
+            "pass_rate": 0.3333
+          },
+          "lift_pp": 33.3,
+          "regressions": 0
+        },
+        "restaurant-split": {
+          "no_skill": {
+            "passes": 0,
+            "trials": 3,
+            "pass_rate": 0.0
+          },
+          "with_skill": {
+            "passes": 3,
+            "trials": 3,
+            "pass_rate": 1.0
+          },
+          "lift_pp": 100.0,
+          "regressions": 0
+        }
+      },
+      "overall": {
+        "no_skill_pass_rate": 0.0833,
+        "with_skill_pass_rate": 0.75,
+        "lift_pp": 66.7,
+        "regressions": 0
+      }
+    }
+  }
+}
