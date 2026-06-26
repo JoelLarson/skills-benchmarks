@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.4.1, pluggy-1.6.0 -- /usr/bin/python3
+rootdir: /root
+configfile: ../dev/null
+collecting ... collected 1 item
+
+::test_answer_correct FAILED                                             [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_answer_correct ______________________________
+
+    def test_answer_correct():
+        path = "/root/answer.txt"
+        assert os.path.exists(path), "answer.txt not found"
+        with open(path) as f:
+            raw = f.read().strip().replace("$", "").replace(",", "")
+        val = float(raw)
+        expected = 58.37
+>       assert abs(val - expected) < 0.005, f"expected {expected}, got {val}"
+E       AssertionError: expected 58.37, got 58.79
+E       assert 0.4200000000000017 < 0.005
+E        +  where 0.4200000000000017 = abs((58.79 - 58.37))
+
+/verifier/test_outputs.py:11: AssertionError
+=========================== short test summary info ============================
+FAILED ::test_answer_correct - AssertionError: expected 58.37, got 58.79
+============================== 1 failed in 0.01s ===============================

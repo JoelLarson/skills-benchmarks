@@ -14,7 +14,27 @@
             "pass_rate": 0.6667
           },
           "lift_pp": 66.7,
-          "regressions": 0
+          "regressions": 0,
+          "cost": {
+            "no_skill": {
+              "runs": 3,
+              "input_tokens": 1055,
+              "output_tokens": 21,
+              "cache_read_tokens": 80000,
+              "total_tokens": 81076,
+              "agent_time_s": 90.0,
+              "wall_time_s": 188.7
+            },
+            "with_skill": {
+              "runs": 3,
+              "input_tokens": 1326,
+              "output_tokens": 64,
+              "cache_read_tokens": 78464,
+              "total_tokens": 79854,
+              "agent_time_s": 90.0,
+              "wall_time_s": 186.5
+            }
+          }
         },
         "invoice-chain": {
           "no_skill": {
@@ -28,7 +48,27 @@
             "pass_rate": 1.0
           },
           "lift_pp": 66.7,
-          "regressions": 0
+          "regressions": 0,
+          "cost": {
+            "no_skill": {
+              "runs": 3,
+              "input_tokens": 3892,
+              "output_tokens": 32,
+              "cache_read_tokens": 76416,
+              "total_tokens": 80340,
+              "agent_time_s": 90.0,
+              "wall_time_s": 189.0
+            },
+            "with_skill": {
+              "runs": 3,
+              "input_tokens": 45784,
+              "output_tokens": 21,
+              "cache_read_tokens": 36992,
+              "total_tokens": 82797,
+              "agent_time_s": 90.0,
+              "wall_time_s": 184.1
+            }
+          }
         },
         "payroll-net": {
           "no_skill": {
@@ -42,7 +82,27 @@
             "pass_rate": 0.3333
           },
           "lift_pp": 33.3,
-          "regressions": 0
+          "regressions": 0,
+          "cost": {
+            "no_skill": {
+              "runs": 3,
+              "input_tokens": 25817,
+              "output_tokens": 24,
+              "cache_read_tokens": 54400,
+              "total_tokens": 80241,
+              "agent_time_s": 90.0,
+              "wall_time_s": 186.2
+            },
+            "with_skill": {
+              "runs": 3,
+              "input_tokens": 70196,
+              "output_tokens": 56,
+              "cache_read_tokens": 12416,
+              "total_tokens": 82668,
+              "agent_time_s": 90.0,
+              "wall_time_s": 184.1
+            }
+          }
         },
         "restaurant-split": {
           "no_skill": {
@@ -56,14 +116,54 @@
             "pass_rate": 1.0
           },
           "lift_pp": 100.0,
-          "regressions": 0
+          "regressions": 0,
+          "cost": {
+            "no_skill": {
+              "runs": 3,
+              "input_tokens": 40039,
+              "output_tokens": 21,
+              "cache_read_tokens": 42112,
+              "total_tokens": 82172,
+              "agent_time_s": 90.0,
+              "wall_time_s": 190.1
+            },
+            "with_skill": {
+              "runs": 3,
+              "input_tokens": 40778,
+              "output_tokens": 21,
+              "cache_read_tokens": 41088,
+              "total_tokens": 81887,
+              "agent_time_s": 90.0,
+              "wall_time_s": 186.7
+            }
+          }
         }
       },
       "overall": {
         "no_skill_pass_rate": 0.0833,
         "with_skill_pass_rate": 0.75,
         "lift_pp": 66.7,
-        "regressions": 0
+        "regressions": 0,
+        "cost": {
+          "no_skill": {
+            "runs": 12,
+            "input_tokens": 70803,
+            "output_tokens": 98,
+            "cache_read_tokens": 252928,
+            "total_tokens": 323829,
+            "agent_time_s": 360.0,
+            "wall_time_s": 754.0
+          },
+          "with_skill": {
+            "runs": 12,
+            "input_tokens": 158084,
+            "output_tokens": 162,
+            "cache_read_tokens": 168960,
+            "total_tokens": 327206,
+            "agent_time_s": 360.0,
+            "wall_time_s": 741.4
+          }
+        }
       }
     }
   }
