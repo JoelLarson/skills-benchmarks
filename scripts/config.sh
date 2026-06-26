@@ -33,11 +33,19 @@ if [[ -z "${MODELS+x}" ]]; then MODELS=("gpt-5.5"); else read -ra MODELS <<< "$M
 # default. Only set this for agents that declare an ACP effort option.
 : "${REASONING_EFFORT:=}"
 
-# Tasks to run (directory names under tasks/).
-if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "rate-average" "percent-updown" "inclusive-count" "subtle-bug" "parse-constraint"); else read -ra TASKS <<< "$TASKS"; fi
+# Tasks to run (directory names under tasks/). Default = the discriminating set:
+# multi-step "precision trap" chains the unprompted model fails at baseline (so the
+# skill has headroom to show an effect). The saturated tasks (rate-average,
+# percent-updown, inclusive-count, subtle-bug, parse-constraint) are 3/3 at baseline
+# for gpt-5.5 and add no signal for this skill; run them explicitly via TASKS= if needed.
+if [[ -z "${TASKS+x}" ]]; then TASKS=("arithmetic-trap" "invoice-chain" "payroll-net" "restaurant-split"); else read -ra TASKS <<< "$TASKS"; fi
 
 # Trials per (model, task, condition).
 : "${TRIALS:=3}"
+
+# Conditions to run. Default runs the full comparison; set CONDS="no_skill" for a
+# cheap baseline-difficulty screen (half the calls) when vetting new tasks.
+if [[ -z "${CONDS+x}" ]]; then CONDS=("no_skill" "with_skill"); else read -ra CONDS <<< "$CONDS"; fi
 
 # Container backend. bench has no --sandbox podman, so with USE_PODMAN=1 we put a
 # docker->podman shim (scripts/podman/) on PATH and point Compose v2 at the Podman

@@ -91,7 +91,7 @@ run_one() {
 
 for model in "${MODELS[@]}"; do
   for task in "${TASKS[@]}"; do
-    for cond in no_skill with_skill; do
+    for cond in "${CONDS[@]}"; do
       for trial in $(seq 1 "$TRIALS"); do
         run_one "$model" "$task" "$cond" "$trial" || true
       done
